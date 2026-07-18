@@ -49,8 +49,8 @@ origins = [o.strip() for o in cors_origins_raw.split(",")] if cors_origins_raw !
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,  # harus False kalau allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
