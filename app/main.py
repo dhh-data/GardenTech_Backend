@@ -1,18 +1,6 @@
-"""
-main.py
-Entry point aplikasi. Jalankan dengan:
-    uvicorn app.main:app --reload
-
-Bedanya dengan contoh dosen:
-- ada CORS middleware (wajib, karena frontend dibuka dari file://
-  atau live server yang originnya beda dengan backend)
-- otomatis bikin semua tabel di MySQL saat startup (Base.metadata.create_all)
-- router di-prefix "/api/v1" supaya cocok persis dengan
-  APP_CONFIG.API_BASE_URL = "http://localhost:8000/api/v1" di frontend
-"""
-
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 import os
 from dotenv import load_dotenv
 
@@ -37,6 +25,14 @@ app = FastAPI(
     description="Backend untuk dashboard monitoring & kontrol Smart Garden Kit (ESP32 + MQTT HiveMQ).",
 )
 
+# ---------- HTTPS redirect ----------
+@app.middleware("http")
+async def redirect_http_to_https(request: Request, call_next):
+    if request.headers.get("x-forwarded-proto") == "http":
+        url = str(request.url).replace("http://", "https://", 1)
+        return RedirectResponse(url=url, status_code=308)
+    return await call_next(request)
+
 # ---------- MQTT startup ----------
 @app.on_event("startup")
 def startup_event():
@@ -44,27 +40,21 @@ def startup_event():
     start_mqtt()
 
 # ---------- CORS ----------
-cors_origins_raw = os.getenv("CORS_ORIGINS", "*")
-origins = [o.strip() for o in cors_origins_raw.split(",")] if cors_origins_raw != "*" else ["*"]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,  # harus False kalau allow_origins=["*"]
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.get("/")
 def root():
     return {"message": "Smart Garden Backend API is running"}
 
-
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
-
 
 API_PREFIX = "/api/v1"
 
