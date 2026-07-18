@@ -1,3 +1,9 @@
+"""
+main.py
+Entry point aplikasi. Jalankan dengan:
+    uvicorn app.main:app --reload
+"""
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -23,15 +29,8 @@ app = FastAPI(
     title="Smart Garden Backend API",
     version="1.0",
     description="Backend untuk dashboard monitoring & kontrol Smart Garden Kit (ESP32 + MQTT HiveMQ).",
+    redirect_slashes=False,
 )
-
-# ---------- HTTPS redirect ----------
-@app.middleware("http")
-async def redirect_http_to_https(request: Request, call_next):
-    if request.headers.get("x-forwarded-proto") == "http":
-        url = str(request.url).replace("http://", "https://", 1)
-        return RedirectResponse(url=url, status_code=308)
-    return await call_next(request)
 
 # ---------- MQTT startup ----------
 @app.on_event("startup")
