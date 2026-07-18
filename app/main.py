@@ -1,9 +1,3 @@
-"""
-main.py
-Entry point aplikasi. Jalankan dengan:
-    uvicorn app.main:app --reload
-"""
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -11,34 +5,33 @@ import os
 from dotenv import load_dotenv
 
 from app.database.database import engine, Base
-from app.models import user, device, sensor_reading, log, pump_setting  # noqa: F401
+from app.models import user, device, sensor_reading, log, pump_setting
 
-from app.api import auth
-from app.api import users
-from app.api import sensors
-from app.api import devices
-from app.api import logs
-from app.api import settings
+from app.api import auth, users, sensors, devices, logs, settings
 from app.api import mqtt as mqtt_router
 
 load_dotenv()
-
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Smart Garden Backend API",
     version="1.0",
     description="Backend untuk dashboard monitoring & kontrol Smart Garden Kit (ESP32 + MQTT HiveMQ).",
-    redirect_slashes=False,
 )
 
-# ---------- MQTT startup ----------
+@app.middleware("http")
+async def force_https(request: Request, call_next):
+    proto = request.headers.get("x-forwarded-proto", "https")
+    if proto == "http":
+        url = str(request.url).replace("http://", "https://", 1)
+        return RedirectResponse(url=url, status_code=308)
+    return await call_next(request)
+
 @app.on_event("startup")
 def startup_event():
     from app.mqtt_client import start_mqtt
     start_mqtt()
 
-# ---------- CORS ----------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -56,7 +49,6 @@ def health_check():
     return {"status": "ok"}
 
 API_PREFIX = "/api/v1"
-
 app.include_router(auth.router,        prefix=API_PREFIX)
 app.include_router(users.router,       prefix=API_PREFIX)
 app.include_router(sensors.router,     prefix=API_PREFIX)
